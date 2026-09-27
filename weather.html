@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Air Quality Action Agent</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #e8f4f8;
+      transition: background 0.6s ease;
+      padding-bottom: 70px;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: linear-gradient(135deg, #1a252f, #163553);
+      color: #fff;
+      padding: 28px 20px 22px;
+      text-align: center;
+    }
+    header h1 { font-size: 1.8rem; letter-spacing: 1px; }
+    header p  { margin-top: 6px; font-size: 0.95rem; opacity: 0.75; }
+
+    /* ── SEARCH ── */
+    .search-box {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      padding: 28px 20px 10px;
+      flex-wrap: wrap;
+    }
+    input[type="text"] {
+      padding: 12px 16px;
+      width: 280px;
+      border-radius: 8px;
+      border: 2px solid #ccc;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus { border-color: #2c3e50; }
+    button#searchBtn {
+      padding: 12px 22px;
+      border: none;
+      border-radius: 8px;
+      background: #2c3e50;
+      color: #fff;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button#searchBtn:hover:not(:disabled) { background: #3d5166; }
+    button#searchBtn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    /* ── ERROR BANNER ── */
+    .error-banner {
+      display: none;
+      margin: 10px auto;
+      width: 420px;
+      max-width: 92vw;
+      background: #fdecea;
+      border: 1px solid #f5c6cb;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 14px;
+      color: #a94442;
+      text-align: center;
+    }
+
+    /* ── MAIN CARD ── */
+    .aqi-card {
+      margin: 16px auto;
+      padding: 30px 24px 24px;
+      border-radius: 16px;
+      width: 420px;
+      max-width: 92vw;
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 6px 24px rgba(0,0,0,0.13);
+      text-align: center;
+    }
+
+    .city-name {
+      font-size: 14px;
+      color: #777;
+      margin-bottom: 4px;
+      min-height: 18px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .aqi-value {
+      font-size: 80px;
+      font-weight: bold;
+      line-height: 1;
+      color: #1f2328;
+    }
+    .aqi-label { font-size: 13px; color: #999; margin-top: 2px; }
+    .status {
+      font-size: 22px;
+      font-weight: 700;
+      margin-top: 10px;
+      color: #2c3e50;
+    }
+    .recommendation {
+      margin-top: 12px;
+      font-size: 15px;
+      color: #444;
+      line-height: 1.6;
+      min-height: 24px;
+    }
+
+    /* ── DIVIDER ── */
+    .divider {
+      border: none;
+      border-top: 1px solid #e5e7eb;
+      margin: 20px 0;
+    }
+
+    /* ── POLLUTANT GRID ── */
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #888;
+      text-align: left;
+      margin-bottom: 12px;
+    }
+    .details-grid {
+      display: none;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      text-align: left;
+    }
+    .detail-item {
+      background: #f7f8fa;
+      border-radius: 8px;
+      padding: 10px 12px;
+      border: 1px solid #e5e7eb;
+    }
+    .detail-label { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 0.4px; }
+    .detail-value { font-size: 17px; font-weight: bold; color: #1f2328; margin-top: 3px; }
+    .detail-unit  { font-size: 11px; color: #aaa; font-weight: normal; }
+
+    /* ── UPDATED TIME ── */
+    .updated-time {
+      font-size: 12px;
+      color: #aaa;
+      margin-top: 16px;
+      text-align: right;
+    }
+
+    /* ── INFO NOTE ── */
+    .info-note {
+      margin: 0 auto 20px;
+      width: 420px;
+      max-width: 92vw;
+      font-size: 12px;
+      color: #999;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .info-note a { color: #3b82d4; }
+
+    /* ── AQI SCALE BAR ── */
+    .scale-bar {
+      display: flex;
+      border-radius: 6px;
+      overflow: hidden;
+      height: 10px;
+      margin-top: 18px;
+    }
+    .scale-bar span { flex: 1; }
+
+    /* ── FOOTER ── */
+    footer {
+      background: #2c3e50;
+      color: #ccc;
+      padding: 14px;
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      font-size: 13px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🌍 Daily Air Quality Action Agent</h1>
+  <p>Stay informed. Breathe smart. Stay healthy.</p>
+</header>
+
+<div class="search-box">
+  <input type="text" id="locationInput" placeholder="Enter city name (e.g. Mumbai, London)">
+  <button id="searchBtn">🔍 Search</button>
+</div>
+
+<div class="error-banner" id="errorBanner"></div>
+
+<div class="aqi-card">
+  <div class="city-name"      id="cityName">–</div>
+  <div class="aqi-value"      id="aqi">--</div>
+  <div class="aqi-label">AQI (US EPA Scale)</div>
+  <div class="status"         id="status">Waiting…</div>
+  <div class="recommendation" id="recommendation">Enter a city above to check air quality.</div>
+
+  <!-- AQI colour scale bar -->
+  <div class="scale-bar">
+    <span style="background:#00c853;" title="Good (0–50)"></span>
+    <span style="background:#ffeb3b;" title="Moderate (51–100)"></span>
+    <span style="background:#ff9800;" title="Unhealthy for Sensitive (101–150)"></span>
+    <span style="background:#f44336;" title="Unhealthy (151–200)"></span>
+    <span style="background:#6a1b9a;" title="Very Unhealthy (201–300)"></span>
+    <span style="background:#4e342e;" title="Hazardous (301+)"></span>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section-title" id="pollutantTitle" style="display:none;">Pollutant Breakdown</div>
+  <div class="details-grid" id="detailsGrid">
+    <div class="detail-item">
+      <div class="detail-label">PM2.5</div>
+      <div class="detail-value" id="pm25">–<span class="detail-unit"></span></div>
+    </div>
+    <div class="detail-item">
+      <div class="detail-label">PM10</div>
+      <div class="detail-value" id="pm10">–<span class="detail-unit"></span></div>
+    </div>
+    <div class="detail-item">
+      <div class="detail-label">O₃ Ozone</div>
+      <div class="detail-value" id="o3">–<span class="detail-unit"></span></div>
+    </div>
+    <div class="detail-item">
+      <div class="detail-label">NO₂</div>
+      <div class="detail-value" id="no2">–<span class="detail-unit"></span></div>
+    </div>
+    <div class="detail-item">
+      <div class="detail-label">SO₂</div>
+      <div class="detail-value" id="so2">–<span class="detail-unit"></span></div>
+    </div>
+    <div class="detail-item">
+      <div class="detail-label">CO</div>
+      <div class="detail-value" id="co">–<span class="detail-unit"></span></div>
+    </div>
+  </div>
+
+  <div class="updated-time" id="updatedTime"></div>
+</div>
+
+<p class="info-note">
+  Data provided by <a href="https://waqi.info" target="_blank">WAQI (World Air Quality Index)</a>.
+  Using <strong>demo</strong> token — covers most major cities.<br>
+  For full global access, get a free token at
+  <a href="https://aqicn.org/api/" target="_blank">aqicn.org/api</a>
+  and replace <code>demo</code> in the script.
+</p>
+
+<footer>
+  Powered by Air Quality Awareness Initiative &nbsp;|&nbsp; Data: WAQI &nbsp;|&nbsp; US EPA AQI Scale
+</footer>
+
+<script>
+  // ── CONFIG ──────────────────────────────────────────────────────────────────
+  // Free token from https://aqicn.org/api/ — replace "demo" for full coverage
+  const WAQI_TOKEN = "abc123yourtokenhere";
+  // ────────────────────────────────────────────────────────────────────────────
+
+  const locationInput = document.getElementById('locationInput');
+  const searchBtn     = document.getElementById('searchBtn');
+  const aqiEl         = document.getElementById('aqi');
+  const statusEl      = document.getElementById('status');
+  const recEl         = document.getElementById('recommendation');
+  const cityEl        = document.getElementById('cityName');
+  const errorBanner   = document.getElementById('errorBanner');
+  const detailsGrid   = document.getElementById('detailsGrid');
+  const pollutantTitle= document.getElementById('pollutantTitle');
+  const updatedTime   = document.getElementById('updatedTime');
+
+  /* ── Helpers ── */
+  function showError(msg) {
+    errorBanner.textContent = "⚠ " + msg;
+    errorBanner.style.display = "block";
+  }
+  function clearError() {
+    errorBanner.style.display = "none";
+  }
+
+  function getStatus(aqi) {
+    if (aqi <= 50)  return "Good";
+    if (aqi <= 100) return "Moderate";
+    if (aqi <= 150) return "Unhealthy for Sensitive Groups";
+    if (aqi <= 200) return "Unhealthy";
+    if (aqi <= 300) return "Very Unhealthy";
+    return "Hazardous";
+  }
+
+  function getRecommendation(aqi) {
+    if (aqi <= 50)  return "✅ Air quality is great. Enjoy outdoor activities freely!";
+    if (aqi <= 100) return "🟡 Air is acceptable. Sensitive individuals should limit prolonged outdoor exertion.";
+    if (aqi <= 150) return "🟠 Sensitive groups (children, elderly, asthma) should reduce outdoor time.";
+    if (aqi <= 200) return "🔴 Health risk for everyone. Limit prolonged or heavy outdoor exertion.";
+    if (aqi <= 300) return "🟣 Serious health alert! Avoid outdoor activities. Wear a mask if necessary.";
+    return "☠️ Hazardous! Stay indoors, seal windows, and use air purifiers immediately.";
+  }
+
+  function getBackground(aqi) {
+    if (aqi <= 50)  return "linear-gradient(135deg, #d4efdf, #a9dfbf)";
+    if (aqi <= 100) return "linear-gradient(135deg, #fef9e7, #fdebd0)";
+    if (aqi <= 150) return "linear-gradient(135deg, #fdebd0, #fad7a0)";
+    if (aqi <= 200) return "linear-gradient(135deg, #fdedec, #f5b7b1)";
+    if (aqi <= 300) return "linear-gradient(135deg, #f4ecf7, #d2b4de)";
+    return "linear-gradient(135deg, #e8daef, #c39bd3)";
+  }
+
+  function getVal(iaqi, key) {
+    return (iaqi && iaqi[key] != null) ? iaqi[key].v : null;
+  }
+
+  function setDetail(id, val, unit) {
+    const el = document.getElementById(id);
+    if (val !== null) {
+      el.innerHTML = val + ' <span class="detail-unit">' + unit + '</span>';
+    } else {
+      el.innerHTML = 'N/A';
+    }
+  }
+
+  /* ── Main fetch ── */
+  async function handleSearch() {
+    const location = locationInput.value.trim();
+    if (!location) {
+      showError("Please enter a city name.");
+      locationInput.focus();
+      return;
+    }
+
+    clearError();
+    aqiEl.textContent     = "…";
+    statusEl.textContent  = "Fetching data…";
+    recEl.textContent     = "";
+    cityEl.textContent    = "";
+    updatedTime.textContent = "";
+    detailsGrid.style.display   = "none";
+    pollutantTitle.style.display = "none";
+    document.body.style.background = "#e8f4f8";
+    searchBtn.disabled = true;
+    searchBtn.textContent = "Loading…";
+
+    try {
+      const url = "https://api.waqi.info/feed/"
+                + encodeURIComponent(location)
+                + "/?token=" + WAQI_TOKEN;
+
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error("Network error — HTTP " + resp.status);
+
+      const data = await resp.json();
+
+      if (data.status !== "ok") {
+        throw new Error(
+          typeof data.data === "string"
+            ? data.data + " — try a different spelling, e.g. 'Delhi' or 'New Delhi'"
+            : "City not found. Please try a different spelling."
+        );
+      }
+
+      const d    = data.data;
+      const aqi  = d.aqi;
+      const iaqi = d.iaqi || {};
+
+      aqiEl.textContent    = aqi;
+      statusEl.textContent = getStatus(aqi);
+      recEl.textContent    = getRecommendation(aqi);
+      cityEl.textContent   = (d.city && d.city.name) ? d.city.name : location;
+      document.body.style.background = getBackground(aqi);
+
+      // Pollutants
+      setDetail('pm25', getVal(iaqi, 'pm25'), 'µg/m³');
+      setDetail('pm10', getVal(iaqi, 'pm10'), 'µg/m³');
+      setDetail('o3',   getVal(iaqi, 'o3'),   'ppb');
+      setDetail('no2',  getVal(iaqi, 'no2'),  'ppb');
+      setDetail('so2',  getVal(iaqi, 'so2'),  'ppb');
+      setDetail('co',   getVal(iaqi, 'co'),   'ppm');
+      detailsGrid.style.display    = "grid";
+      pollutantTitle.style.display = "block";
+
+      // Timestamp
+      if (d.time && d.time.s) {
+        updatedTime.textContent = "Last updated: " + d.time.s;
+      }
+
+    } catch (err) {
+      aqiEl.textContent    = "--";
+      statusEl.textContent = "Error";
+      recEl.textContent    = "";
+      document.body.style.background = "linear-gradient(135deg, #bdc3c7, #95a5a6)";
+      showError(err.message || "Unknown error. Check your internet connection and try again.");
+      console.error("[AQI Error]", err);
+    } finally {
+      searchBtn.disabled = false;
+      searchBtn.textContent = "🔍 Search";
+    }
+  }
+
+  searchBtn.addEventListener('click', handleSearch);
+  locationInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') handleSearch();
+  });
+</script>
+
+</body>
+</html>

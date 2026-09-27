@@ -1,0 +1,19 @@
+conda activate "C:\Users\Vansh Patel\myenvironment"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+https://www.udemy.com/course/ai-coder-from-vibe-coder-to-agentic-engineer/?couponCode=CP260817G1

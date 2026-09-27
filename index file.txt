@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Air Quality Action Agent</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #87CEEB, #f0f8ff);
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+    header {
+      background-color: #2c3e50;
+      color: white;
+      padding: 20px;
+    }
+    .aqi-box {
+      margin: 30px auto;
+      padding: 20px;
+      border-radius: 10px;
+      width: 300px;
+      background-color: #ffffff;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .aqi-value {
+      font-size: 48px;
+      font-weight: bold;
+    }
+    .status {
+      font-size: 20px;
+      margin-top: 10px;
+    }
+    .recommendation {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #333;
+    }
+    footer {
+      background-color: #2c3e50;
+      color: white;
+      padding: 10px;
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<script>
+  window.wxOConfiguration = {
+    orchestrationID: "8ad945759ff342f9a01c095405a78158_7730b168-f21c-4eb7-916e-e6e9861d29b7",
+    hostURL: "https://au-syd.watson-orchestrate.cloud.ibm.com",
+    rootElementID: "root",
+    deploymentPlatform: "ibmcloud",
+    crn: "crn:v1:bluemix:public:watsonx-orchestrate:au-syd:a/8ad945759ff342f9a01c095405a78158:7730b168-f21c-4eb7-916e-e6e9861d29b7::",
+    chatOptions: {
+        agentId: "301d1df7-c24d-4bf2-8aaf-7dd31805fb71", 
+    }
+  };
+  setTimeout(function () {
+    const script = document.createElement('script');
+    script.src = `${window.wxOConfiguration.hostURL}/wxochat/wxoLoader.js?embed=true`;
+    script.addEventListener('load', function () {
+        wxoLoader.init();
+    });
+    document.head.appendChild(script);
+  }, 0);                     
+</script>
+  <header>
+    <h1>🌍 Daily Air Quality Action Agent</h1>
+    <p>Stay informed. Stay healthy.</p>
+  </header>
+
+  <div class="aqi-box">
+    <div class="aqi-value" id="aqi">75</div>
+    <div class="status" id="status">Moderate</div>
+    <div class="recommendation" id="recommendation">
+      Sensitive groups should limit prolonged outdoor exertion.
+    </div>
+  </div>
+
+  <footer>
+    <p>Powered by Air Quality Awareness Initiative</p>
+  </footer>
+
+  <script>
+    // Example AQI logic (replace with API data later)
+    let aqi = 75; // Example value
+    let status = "";
+    let recommendation = "";
+
+    if (aqi <= 50) {
+      status = "Good";
+      recommendation = "Enjoy outdoor activities!";
+    } else if (aqi <= 100) {
+      status = "Moderate";
+      recommendation = "Sensitive groups should limit prolonged outdoor exertion.";
+    } else if (aqi <= 150) {
+      status = "Unhealthy for Sensitive Groups";
+      recommendation = "Consider reducing outdoor activities.";
+    } else if (aqi <= 200) {
+      status = "Unhealthy";
+      recommendation = "Everyone should limit outdoor exertion.";
+    } else if (aqi <= 300) {
+      status = "Very Unhealthy";
+      recommendation = "Avoid outdoor activities.";
+    } else {
+      status = "Hazardous";
+      recommendation = "Stay indoors and use air purifiers.";
+    }
+
+    document.getElementById("aqi").textContent = aqi;
+    document.getElementById("status").textContent = status;
+    document.getElementById("recommendation").textContent = recommendation;
+  </script>
+</body>
+</html>

@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Air Quality Action Agent</title>
+  <style>
+    :root {
+      --clr-bg:       #0d1117;
+      --clr-surface:  #161b22;
+      --clr-card:     #1c2128;
+      --clr-border:   #30363d;
+      --clr-text:     #e6edf3;
+      --clr-muted:    #8b949e;
+      --clr-accent:   #58a6ff;
+      --clr-good:     #3fb950;
+      --clr-moderate: #d29922;
+      --clr-usg:      #e3771a;
+      --clr-unhealthy:#f85149;
+      --clr-very:     #bc8cff;
+      --clr-haz:      #ff7b72;
+      --radius:       12px;
+      --transition:   0.35s ease;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+      background: var(--clr-bg);
+      color: var(--clr-text);
+      min-height: 100vh;
+      padding-bottom: 72px;
+      transition: background var(--transition);
+    }
+
+    /* ── TOP NAV ── */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 28px;
+      background: var(--clr-surface);
+      border-bottom: 1px solid var(--clr-border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand { font-size: 1.05rem; font-weight: 700; letter-spacing: 0.5px; color: var(--clr-accent); }
+    .nav-brand span { color: var(--clr-text); }
+    .nav-time { font-size: 12px; color: var(--clr-muted); }
+
+    /* ── SEARCH ── */
+    .search-section {
+      max-width: 760px;
+      margin: 36px auto 0;
+      padding: 0 20px;
+      text-align: center;
+    }
+    .search-section h1 { font-size: 2rem; font-weight: 800; margin-bottom: 6px; }
+    .search-section p  { color: var(--clr-muted); font-size: 15px; margin-bottom: 24px; }
+
+    .search-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .search-input-wrap {
+      position: relative;
+      flex: 1;
+      max-width: 400px;
+    }
+    .search-input-wrap svg {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--clr-muted);
+      pointer-events: none;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 13px 16px 13px 42px;
+      background: var(--clr-card);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      color: var(--clr-text);
+      font-size: 15px;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+    input[type="text"]:focus { border-color: var(--clr-accent); }
+    input[type="text"]::placeholder { color: var(--clr-muted); }
+
+    .btn-search {
+      padding: 13px 26px;
+      background: var(--clr-accent);
+      color: #0d1117;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity var(--transition), transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn-search:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+    .btn-search:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    .btn-locate {
+      padding: 13px 16px;
+      background: var(--clr-card);
+      color: var(--clr-accent);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      font-size: 15px;
+      cursor: pointer;
+      transition: background var(--transition);
+      title: "Use my location";
+    }
+    .btn-locate:hover { background: var(--clr-border); }
+
+    /* ── ERROR ── */
+    .error-banner {
+      display: none;
+      max-width: 720px;
+      margin: 14px auto 0;
+      padding: 12px 18px;
+      background: rgba(248,81,73,0.12);
+      border: 1px solid rgba(248,81,73,0.35);
+      border-radius: var(--radius);
+      font-size: 14px;
+      color: #f85149;
+      text-align: center;
+    }
+
+    /* ── GRID LAYOUT ── */
+    .dashboard {
+      max-width: 760px;
+      margin: 28px auto 0;
+      padding: 0 20px;
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1fr 1fr;
+      grid-template-areas:
+        "hero   hero"
+        "scale  scale"
+        "poll   poll"
+        "health tips";
+    }
+
+    /* ── HERO CARD ── */
+    .card-hero {
+      grid-area: hero;
+      background: var(--clr-card);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      padding: 28px 28px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      transition: border-color var(--transition);
+    }
+    .hero-left { flex: 1; min-width: 180px; }
+    .hero-city { font-size: 13px; color: var(--clr-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .hero-aqi  { font-size: 88px; font-weight: 900; line-height: 1; letter-spacing: -3px; }
+    .hero-label{ font-size: 12px; color: var(--clr-muted); margin-top: 2px; }
+    .hero-status { font-size: 22px; font-weight: 700; margin-top: 10px; }
+    .hero-rec  { margin-top: 10px; font-size: 14px; color: var(--clr-muted); line-height: 1.6; max-width: 340px; }
+    .hero-updated { margin-top: 14px; font-size: 11px; color: var(--clr-muted); }
+
+    .hero-right { text-align: right; min-width: 130px; }
+    .gauge-wrap { display: inline-block; }
+    .gauge-svg  { display: block; }
+    .gauge-center-text { font-size: 11px; fill: var(--clr-muted); }
+
+    /* ── SCALE CARD ── */
+    .card-scale {
+      grid-area: scale;
+      background: var(--clr-card);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      padding: 18px 22px;
+    }
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.9px;
+      color: var(--clr-muted);
+      margin-bottom: 14px;
+    }
+    .scale-track {
+      display: flex;
+      border-radius: 6px;
+      overflow: hidden;
+      height: 12px;
+      margin-bottom: 8px;
+    }
+    .scale-track span { flex: 1; }
+    .scale-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--clr-muted);
+    }
+    .scale-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+    .scale-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      margin-top: 12px;
+    }
+    .scale-legend-item { font-size: 12px; color: var(--clr-muted); }
+
+    /* ── POLLUTANT CARD ── */
+    .card-poll {
+      grid-area: poll;
+      background: var(--clr-card);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      padding: 18px 22px;
+    }
+    .poll-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .poll-item {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .poll-name  { font-size: 11px; color: var(--clr-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .poll-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+    .poll-unit  { font-size: 11px; color: var(--clr-muted); font-weight: 400; margin-left: 2px; }
+    .poll-bar   { height: 3px; border-radius: 2px; margin-top: 8px; background: var(--clr-border); overflow: hidden; }
+    .poll-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+
+    /* ── HEALTH / TIPS CARDS ── */
+    .card-health, .card-tips {
+      background: var(--clr-card);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      padding: 18px 22px;
+    }
+    .card-health { grid-area: health; }
+    .card-tips   { grid-area: tips; }
+
+    .health-level {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .health-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .health-text { font-size: 13px; color: var(--clr-muted); line-height: 1.5; }
+
+    .tips-list {
+      list-style: none;
+      margin-top: 14px;
+    }
+    .tips-list li {
+      font-size: 13px;
+      color: var(--clr-muted);
+      padding: 7px 0;
+      border-bottom: 1px solid var(--clr-border);
+      display: flex;
+      gap: 8px;
+      line-height: 1.5;
+    }
+    .tips-list li:last-child { border-bottom: none; }
+    .tip-icon { font-size: 15px; flex-shrink: 0; }
+
+    /* ── SKELETON LOADER ── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--clr-border) 25%, var(--clr-surface) 50%, var(--clr-border) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 6px;
+    }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+
+    /* ── FOOTER ── */
+    footer {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      background: var(--clr-surface);
+      border-top: 1px solid var(--clr-border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--clr-muted);
+    }
+    footer a { color: var(--clr-accent); text-decoration: none; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 560px) {
+      .dashboard { grid-template-columns: 1fr; grid-template-areas: "hero" "scale" "poll" "health" "tips"; }
+      .poll-grid { grid-template-columns: 1fr 1fr; }
+      .hero-aqi  { font-size: 64px; }
+      nav { padding: 12px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">🌍 <span>AQI</span> Agent</div>
+  <div class="nav-time" id="navTime"></div>
+</nav>
+
+<!-- SEARCH -->
+<div class="search-section">
+  <h1>Daily Air Quality Agent</h1>
+  <p>Real-time AQI, pollutant breakdown, and personalised health guidance.</p>
+  <div class="search-row">
+    <div class="search-input-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" id="locationInput" placeholder="City name — e.g. Mumbai, London, New York">
+    </div>
+    <button class="btn-locate" id="locateBtn" title="Use my location">📍</button>
+    <button class="btn-search" id="searchBtn">Search</button>
+  </div>
+</div>
+
+<div class="error-banner" id="errorBanner"></div>
+
+<!-- DASHBOARD -->
+<div class="dashboard" id="dashboard" style="display:none;">
+
+  <!-- HERO -->
+  <div class="card-hero" id="cardHero">
+    <div class="hero-left">
+      <div class="hero-city"   id="heroCity">–</div>
+      <div class="hero-aqi"    id="heroAqi">--</div>
+      <div class="hero-label">AQI (US EPA)</div>
+      <div class="hero-status" id="heroStatus">–</div>
+      <div class="hero-rec"    id="heroRec">–</div>
+      <div class="hero-updated" id="heroUpdated"></div>
+    </div>
+    <div class="hero-right">
+      <div class="gauge-wrap">
+        <svg class="gauge-svg" width="140" height="140" viewBox="0 0 140 140" id="gaugeSvg">
+          <circle cx="70" cy="70" r="54" fill="none" stroke="#30363d" stroke-width="12"/>
+          <circle cx="70" cy="70" r="54" fill="none" id="gaugeArc"
+                  stroke="#58a6ff" stroke-width="12"
+                  stroke-dasharray="339.3" stroke-dashoffset="339.3"
+                  stroke-linecap="round"
+                  transform="rotate(-90 70 70)"
+                  style="transition: stroke-dashoffset 1s ease, stroke 0.5s ease;"/>
+          <text x="70" y="65" text-anchor="middle" font-size="28" font-weight="900" fill="#e6edf3" id="gaugeNum">--</text>
+          <text x="70" y="84" text-anchor="middle" font-size="11" fill="#8b949e">AQI</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- AQI SCALE -->
+  <div class="card-scale">
+    <div class="card-title">AQI Scale Reference</div>
+    <div class="scale-track">
+      <span style="background:#3fb950;"></span>
+      <span style="background:#d29922;"></span>
+      <span style="background:#e3771a;"></span>
+      <span style="background:#f85149;"></span>
+      <span style="background:#bc8cff;"></span>
+      <span style="background:#ff7b72;"></span>
+    </div>
+    <div class="scale-labels">
+      <span>0</span><span>50</span><span>100</span><span>150</span><span>200</span><span>300</span><span>500+</span>
+    </div>
+    <div class="scale-legend">
+      <span class="scale-legend-item"><span class="scale-indicator" style="background:#3fb950;"></span>Good</span>
+      <span class="scale-legend-item"><span class="scale-indicator" style="background:#d29922;"></span>Moderate</span>
+      <span class="scale-legend-item"><span class="scale-indicator" style="background:#e3771a;"></span>Unhealthy (Sensitive)</span>
+      <span class="scale-legend-item"><span class="scale-indicator" style="background:#f85149;"></span>Unhealthy</span>
+      <span class="scale-legend-item"><span class="scale-indicator" style="background:#bc8cff;"></span>Very Unhealthy</span>
+      <span class="scale-legend-item"><span class="scale-indicator" style="background:#ff7b72;"></span>Hazardous</span>
+    </div>
+  </div>
+
+  <!-- POLLUTANTS -->
+  <div class="card-poll">
+    <div class="card-title">Pollutant Breakdown</div>
+    <div class="poll-grid" id="pollGrid">
+      <!-- injected by JS -->
+    </div>
+  </div>
+
+  <!-- HEALTH IMPACT -->
+  <div class="card-health">
+    <div class="card-title">Health Impact</div>
+    <div id="healthContent"></div>
+  </div>
+
+  <!-- ACTION TIPS -->
+  <div class="card-tips">
+    <div class="card-title">Action Tips</div>
+    <ul class="tips-list" id="tipsList"></ul>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <span>Powered by <a href="https://waqi.info" target="_blank">WAQI</a> · US EPA AQI Standard</span>
+  <span id="footerToken">Token: demo</span>
+</footer>
+
+<script>
+  // ── CONFIG ──────────────────────────────────────────────────────────────────
+  // Replace "demo" with your free token from https://aqicn.org/api/
+  const WAQI_TOKEN = "demo";
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /* ── DOM refs ── */
+  const locationInput = document.getElementById('locationInput');
+  const searchBtn     = document.getElementById('searchBtn');
+  const locateBtn     = document.getElementById('locateBtn');
+  const errorBanner   = document.getElementById('errorBanner');
+  const dashboard     = document.getElementById('dashboard');
+  const heroCity      = document.getElementById('heroCity');
+  const heroAqi       = document.getElementById('heroAqi');
+  const heroStatus    = document.getElementById('heroStatus');
+  const heroRec       = document.getElementById('heroRec');
+  const heroUpdated   = document.getElementById('heroUpdated');
+  const gaugeArc      = document.getElementById('gaugeArc');
+  const gaugeNum      = document.getElementById('gaugeNum');
+  const pollGrid      = document.getElementById('pollGrid');
+  const healthContent = document.getElementById('healthContent');
+  const tipsList      = document.getElementById('tipsList');
+  const cardHero      = document.getElementById('cardHero');
+  const navTime       = document.getElementById('navTime');
+
+  /* ── Live clock ── */
+  function updateClock() {
+    navTime.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  /* ── AQI metadata ── */
+  const AQI_LEVELS = [
+    { max: 50,  label: "Good",                        color: "#3fb950", bg: "rgba(63,185,80,0.08)",   border: "rgba(63,185,80,0.35)"   },
+    { max: 100, label: "Moderate",                    color: "#d29922", bg: "rgba(210,153,34,0.08)",  border: "rgba(210,153,34,0.35)"  },
+    { max: 150, label: "Unhealthy for Sensitive",     color: "#e3771a", bg: "rgba(227,119,26,0.08)",  border: "rgba(227,119,26,0.35)"  },
+    { max: 200, label: "Unhealthy",                   color: "#f85149", bg: "rgba(248,81,73,0.08)",   border: "rgba(248,81,73,0.35)"   },
+    { max: 300, label: "Very Unhealthy",              color: "#bc8cff", bg: "rgba(188,140,255,0.08)", border: "rgba(188,140,255,0.35)" },
+    { max: 9999,label: "Hazardous",                   color: "#ff7b72", bg: "rgba(255,123,114,0.08)", border: "rgba(255,123,114,0.35)" },
+  ];
+
+  const HEALTH_MAP = {
+    0:   { groups: ["General public"], impact: "Little to no risk. Air quality is considered satisfactory." },
+    50:  { groups: ["Sensitive groups"], impact: "Unusually sensitive people should consider limiting prolonged outdoor activity." },
+    100: { groups: ["Children", "Elderly", "Asthma / heart patients"], impact: "Increasingly harmful effects. Active children and adults and people with respiratory disease should limit prolonged outdoor exertion." },
+    150: { groups: ["Everyone"], impact: "Everyone may begin to experience health effects. Members of sensitive groups may experience more serious effects." },
+    200: { groups: ["Everyone"], impact: "Health warnings of emergency conditions. Entire population is likely to be affected." },
+    300: { groups: ["Everyone"], impact: "Health alert: everyone may experience more serious health effects. Avoid all outdoor activities." },
+  };
+
+  const TIPS_MAP = {
+    0:   ["🌿 Great day for a run or cycling outdoors.", "🪟 Open windows to let in fresh air.", "🌳 Enjoy parks and green spaces.", "💧 Stay hydrated as usual."],
+    50:  ["😷 Sensitive groups: consider wearing a mask.", "🏠 People with allergies may prefer to stay indoors.", "🌬️ Use air purifier indoors if sensitive.", "📱 Monitor AQI before heading out."],
+    100: ["😷 Wear N95/KN95 mask if going out.", "🏃 Reduce intensity and duration of outdoor exercise.", "🚗 Keep car windows closed; use A/C recirculation.", "🏠 Keep windows closed during peak hours."],
+    150: ["🚫 Avoid outdoor exercise entirely.", "😷 Wear N95/KN95 mask if you must go outside.", "🪟 Seal gaps in doors and windows.", "💨 Run air purifier on high indoors.", "🏥 Keep inhalers/medications accessible."],
+    200: ["🏠 Stay indoors as much as possible.", "🚫 No outdoor activities.", "💨 Air purifier is essential.", "🚰 Drink plenty of water to flush toxins.", "📞 Check on elderly relatives and neighbours."],
+    300: ["🆘 Emergency conditions — stay indoors.", "🪟 Seal all windows and doors.", "💨 Run HEPA air purifiers continuously.", "😷 Full respirator if evacuation needed.", "📺 Follow local emergency broadcasts."],
+  };
+
+  function getLevel(aqi) {
+    return AQI_LEVELS.find(l => aqi <= l.max) || AQI_LEVELS[AQI_LEVELS.length - 1];
+  }
+
+  function getTipsKey(aqi) {
+    const keys = [0, 50, 100, 150, 200, 300].reverse();
+    return keys.find(k => aqi > k) ?? 0;
+  }
+
+  /* ── Pollutant config ── */
+  const POLLUTANTS = [
+    { key: "pm25", name: "PM2.5", unit: "µg/m³", max: 250 },
+    { key: "pm10", name: "PM10",  unit: "µg/m³", max: 430 },
+    { key: "o3",   name: "O₃",   unit: "ppb",    max: 200 },
+    { key: "no2",  name: "NO₂",  unit: "ppb",    max: 200 },
+    { key: "so2",  name: "SO₂",  unit: "ppb",    max: 300 },
+    { key: "co",   name: "CO",   unit: "ppm",    max: 50  },
+  ];
+
+  function getVal(iaqi, key) {
+    return (iaqi && iaqi[key] != null) ? iaqi[key].v : null;
+  }
+
+  /* ── Error/clear ── */
+  function showError(msg) {
+    errorBanner.innerHTML = "⚠ " + msg;
+    errorBanner.style.display = "block";
+  }
+  function clearError() {
+    errorBanner.style.display = "none";
+  }
+
+  /* ── Gauge arc ── */
+  function animateGauge(aqi, color) {
+    const circumference = 2 * Math.PI * 54; // 339.3
+    const capped = Math.min(aqi, 500);
+    const fraction = capped / 500;
+    const offset = circumference * (1 - fraction);
+    gaugeArc.style.strokeDashoffset = offset;
+    gaugeArc.style.stroke = color;
+    gaugeNum.textContent = aqi;
+  }
+
+  /* ── Render ── */
+  function render(d) {
+    const aqi   = d.aqi;
+    const iaqi  = d.iaqi || {};
+    const level = getLevel(aqi);
+
+    // Hero
+    heroCity.textContent   = (d.city && d.city.name) ? d.city.name : locationInput.value.trim();
+    heroAqi.textContent    = aqi;
+    heroAqi.style.color    = level.color;
+    heroStatus.textContent = level.label;
+    heroStatus.style.color = level.color;
+    heroRec.textContent    = TIPS_MAP[getTipsKey(aqi)][0];
+    if (d.time && d.time.s) heroUpdated.textContent = "Updated: " + d.time.s;
+
+    // Card border glow
+    cardHero.style.borderColor = level.border;
+    cardHero.style.background  = level.bg
+      ? "linear-gradient(135deg, " + level.bg + ", var(--clr-card))"
+      : "var(--clr-card)";
+
+    // Gauge
+    animateGauge(aqi, level.color);
+
+    // Pollutant grid
+    pollGrid.innerHTML = POLLUTANTS.map(p => {
+      const val = getVal(iaqi, p.key);
+      const pct = val !== null ? Math.min(100, (val / p.max) * 100).toFixed(1) : 0;
+      return `
+        <div class="poll-item">
+          <div class="poll-name">${p.name}</div>
+          <div class="poll-value">${val !== null ? val : 'N/A'}<span class="poll-unit">${val !== null ? p.unit : ''}</span></div>
+          <div class="poll-bar"><div class="poll-bar-fill" style="width:${pct}%;background:${level.color};"></div></div>
+        </div>`;
+    }).join('');
+
+    // Health impact
+    const hKey = [0,50,100,150,200,300].reverse().find(k => aqi > k) ?? 0;
+    const h = HEALTH_MAP[hKey];
+    healthContent.innerHTML = `
+      <div class="health-level">
+        <div class="health-dot" style="background:${level.color};"></div>
+        <div class="health-text"><strong>${h.groups.join(', ')}</strong><br>${h.impact}</div>
+      </div>`;
+
+    // Tips
+    const tips = TIPS_MAP[getTipsKey(aqi)];
+    tipsList.innerHTML = tips.map(t => {
+      const icon = t.slice(0, 2);
+      const text = t.slice(2).trim();
+      return `<li><span class="tip-icon">${icon}</span><span>${text}</span></li>`;
+    }).join('');
+
+    // Show dashboard
+    dashboard.style.display = "grid";
+  }
+
+  /* ── Fetch by location string ── */
+  async function fetchAndRender(query) {
+    clearError();
+    dashboard.style.display = "none";
+    searchBtn.disabled = true;
+    searchBtn.textContent = "Loading…";
+
+    try {
+      const url = "https://api.waqi.info/feed/" + encodeURIComponent(query) + "/?token=" + WAQI_TOKEN;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error("Network error — HTTP " + resp.status);
+      const json = await resp.json();
+
+      if (json.status !== "ok") {
+        throw new Error(
+          typeof json.data === "string"
+            ? json.data + " — try a different spelling."
+            : "City not found. Try: 'Mumbai', 'Delhi', 'London', 'Beijing'."
+        );
+      }
+
+      render(json.data);
+    } catch (err) {
+      showError(err.message || "Unknown error. Check your internet connection.");
+      console.error("[AQI]", err);
+    } finally {
+      searchBtn.disabled = false;
+      searchBtn.textContent = "Search";
+    }
+  }
+
+  /* ── Fetch by coords (geolocation) ── */
+  async function fetchByCoords(lat, lon) {
+    clearError();
+    dashboard.style.display = "none";
+    locateBtn.disabled = true;
+    locateBtn.textContent = "📡";
+
+    try {
+      const url = "https://api.waqi.info/feed/geo:" + lat + ";" + lon + "/?token=" + WAQI_TOKEN;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error("Network error — HTTP " + resp.status);
+      const json = await resp.json();
+
+      if (json.status !== "ok") throw new Error("Could not fetch AQI for your location.");
+      render(json.data);
+      if (json.data.city && json.data.city.name) locationInput.value = json.data.city.name;
+    } catch (err) {
+      showError(err.message);
+      console.error("[AQI Geo]", err);
+    } finally {
+      locateBtn.disabled = false;
+      locateBtn.textContent = "📍";
+    }
+  }
+
+  /* ── Event listeners ── */
+  searchBtn.addEventListener('click', () => {
+    const loc = locationInput.value.trim();
+    if (!loc) { showError("Please enter a city name."); locationInput.focus(); return; }
+    fetchAndRender(loc);
+  });
+
+  locationInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') searchBtn.click();
+  });
+
+  locateBtn.addEventListener('click', () => {
+    if (!navigator.geolocation) { showError("Geolocation is not supported by your browser."); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => fetchByCoords(pos.coords.latitude, pos.coords.longitude),
+      ()  => showError("Location access denied. Please allow location or type a city name.")
+    );
+  });
+
+  // Show token status in footer
+  document.getElementById('footerToken').textContent =
+    WAQI_TOKEN === "demo" ? "Token: demo (limited)" : "Token: custom ✓";
+</script>
+
+</body>
+</html>
